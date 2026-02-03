@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-const chalk = require("chalk");
-const boxen = require("boxen");
+import chalk from "chalk";
+import boxen from "boxen";
 
 const lines = [
   chalk.green("✅ vibetest command installed globally!"),

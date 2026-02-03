@@ -11,6 +11,7 @@ export interface VibeConfig {
     headers?: Record<string, string>;
   };
   safeMode: boolean; // No destructive tests
+  autoContinue?: boolean; // Auto-continue on rate limits without prompting
 }
 
 export type RiskLevel = "low" | "medium" | "high" | "critical";

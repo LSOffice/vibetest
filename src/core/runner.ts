@@ -201,26 +201,43 @@ export async function runVibeTest(config: VibeConfig) {
       if (isRateLimited) {
         rateLimitHits++;
 
+        // Get the endpoint/path that was rate limited
+        const endpoint =
+          response.request?.path || response.config?.url || "unknown";
+
         if (rateLimitHits <= MAX_RATE_LIMIT_BEFORE_PROMPT) {
-          // Exponentially increase wait time: 3s, 6s, 9s, 12s, 15s
-          const waitTime = BASE_WAIT_TIME * rateLimitHits;
+          // Cap at 9s: 3s, 6s, 9s, 9s, 9s
+          const waitTime = Math.min(
+            BASE_WAIT_TIME * rateLimitHits,
+            BASE_WAIT_TIME * 3,
+          );
+          const limitDisplay = config.autoContinue
+            ? "∞"
+            : MAX_RATE_LIMIT_BEFORE_PROMPT;
           console.log(
             chalk.yellow(
-              `\n  ⏸️  Rate limit detected. Pausing for ${waitTime / 1000}s... (${rateLimitHits}/${MAX_RATE_LIMIT_BEFORE_PROMPT})`,
+              `\n  ⏸️  Rate limit hit: ${endpoint}\n     Pausing for ${waitTime / 1000}s... (${rateLimitHits}/${limitDisplay})`,
             ),
           );
           await new Promise((resolve) => setTimeout(resolve, waitTime));
         }
 
         if (rateLimitHits === MAX_RATE_LIMIT_BEFORE_PROMPT) {
-          // After 5 rate limits, ask user if they want to continue
+          // After 5 rate limits, ask user if they want to continue (unless auto-continue is enabled)
           console.log(
             chalk.red(
               `\n  🚨 Hit ${MAX_RATE_LIMIT_BEFORE_PROMPT} rate limits. The target application is heavily rate-limiting requests.`,
             ),
           );
 
-          if (process.stdout.isTTY) {
+          if (config.autoContinue) {
+            // Auto-continue without prompting
+            console.log(
+              chalk.green(
+                "\n  ▶️  Auto-continuing with 9s delays (--auto-continue enabled)...\n",
+              ),
+            );
+          } else if (process.stdout.isTTY) {
             const { shouldContinue } = await inquirer.prompt([
               {
                 type: "confirm",
@@ -252,11 +269,13 @@ export async function runVibeTest(config: VibeConfig) {
             );
           }
         } else if (rateLimitHits > MAX_RATE_LIMIT_BEFORE_PROMPT) {
-          // After user confirms, use even longer waits
-          const waitTime = BASE_WAIT_TIME * 5; // 15 seconds
+          // After user confirms, stay at 9s
+          const endpoint =
+            response.request?.path || response.config?.url || "unknown";
+          const waitTime = BASE_WAIT_TIME * 3; // Stay at 9 seconds
           console.log(
             chalk.yellow(
-              `\n  ⏸️  Rate limit detected. Pausing for ${waitTime / 1000}s... (hit #${rateLimitHits})`,
+              `\n  ⏸️  Rate limit hit: ${endpoint}\n     Pausing for ${waitTime / 1000}s... (hit #${rateLimitHits})`,
             ),
           );
           await new Promise((resolve) => setTimeout(resolve, waitTime));

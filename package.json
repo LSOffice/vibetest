@@ -2,7 +2,7 @@
   "name": "vibetest",
   "version": "1.0.0",
   "description": "pentesting for vibecoded apps",
-  "type": "commonjs",
+  "type": "module",
   "bin": {
     "vibetest": "./dist/index.js"
   },

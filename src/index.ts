@@ -17,6 +17,11 @@ program
   .option("--host <string>", "Host to bind to", "localhost")
   .option("--token <string>", "Bearer token for authentication")
   .option("--safe", "Run only safe checks", true)
+  .option(
+    "--auto-continue",
+    "Auto-continue testing on rate limits without prompting",
+    false,
+  )
   .action(async (options) => {
     console.log(chalk.bold.magenta("\n🔮 Vibetest initialized...\n"));
 
@@ -41,6 +46,7 @@ program
         apiUrl: apiUrl !== frontendUrl ? apiUrl : undefined,
         auth: options.token ? { token: options.token } : undefined,
         safeMode: options.safe,
+        autoContinue: options.autoContinue,
       });
     } catch (error: any) {
       console.error(chalk.red("Fatal Error:"), error.message);
