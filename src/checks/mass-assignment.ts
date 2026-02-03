@@ -33,7 +33,7 @@ export const massAssignmentCheck: Check = {
       for (const method of methods) {
         try {
           // First, check if method is allowed
-          const client = route.path.startsWith('/api') ? apiAxios : axios;
+          const client = route.path.startsWith("/api") ? apiAxios : axios;
           const preCheck = await client.request({
             method,
             url: route.path,

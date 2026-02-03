@@ -10,7 +10,10 @@ program
   .description("Localhost-only pentesting CLI for modern web apps")
   .version("0.0.1")
   .requiredOption("-p, --port <number>", "Port to attach to (e.g. 3000)")
-  .option("--api-port <number>", "Separate port for backend API (if different from frontend)")
+  .option(
+    "--api-port <number>",
+    "Separate port for backend API (if different from frontend)",
+  )
   .option("--host <string>", "Host to bind to", "localhost")
   .option("--token <string>", "Bearer token for authentication")
   .option("--safe", "Run only safe checks", true)
@@ -27,8 +30,8 @@ program
 
     try {
       const frontendUrl = `http://${options.host}:${options.port}`;
-      const apiUrl = options.apiPort 
-        ? `http://${options.host}:${options.apiPort}` 
+      const apiUrl = options.apiPort
+        ? `http://${options.host}:${options.apiPort}`
         : frontendUrl;
 
       await runVibeTest({

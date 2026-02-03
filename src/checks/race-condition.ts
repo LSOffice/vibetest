@@ -38,7 +38,7 @@ export const raceConditionCheck: Check = {
       // Ideally checking IDOR or Mass Assignment first gives us a shape?
       // For now, empty JSON.
 
-      const client = route.path.startsWith('/api') ? apiAxios : axios;
+      const client = route.path.startsWith("/api") ? apiAxios : axios;
 
       for (let i = 0; i < REQUEST_COUNT; i++) {
         promises.push(

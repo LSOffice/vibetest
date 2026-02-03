@@ -28,7 +28,7 @@ export const idorCheck: Check = {
           const testPath = route.path.replace(/\/\d+$/, `/${testId}`);
           try {
             // Try to access neighbor ID
-            const client = route.path.startsWith('/api') ? apiAxios : axios;
+            const client = route.path.startsWith("/api") ? apiAxios : axios;
             const headers = config.auth?.token
               ? { Authorization: `Bearer ${config.auth.token}` }
               : {};

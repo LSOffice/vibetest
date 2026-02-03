@@ -121,7 +121,7 @@ export async function runVibeTest(config: VibeConfig) {
   };
 
   const axiosInstance = createAxiosInstance(config.baseUrl);
-  const apiAxiosInstance = config.apiUrl 
+  const apiAxiosInstance = config.apiUrl
     ? createAxiosInstance(config.apiUrl)
     : axiosInstance;
 
