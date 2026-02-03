@@ -44,7 +44,7 @@ exports.unsafeMethodsCheck = {
                 continue;
             try {
                 // We send an empty body or random data
-                const client = route.path.startsWith('/api') ? apiAxios : axios;
+                const client = route.path.startsWith("/api") ? apiAxios : axios;
                 const res = await client.request({
                     method: route.method,
                     url: route.path,

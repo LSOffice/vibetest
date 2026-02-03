@@ -29,7 +29,7 @@ exports.securityByCommentCheck = {
                     // We assume discoveredRoutes might include some that returned 401/403 previously.
                     // But our crawler logic in crawler.ts only pushed routes if status !== 404.
                     // However, crawler logic didn't filter 401/403. Let's verify here.
-                    const client = route.path.startsWith('/api') ? apiAxios : axios;
+                    const client = route.path.startsWith("/api") ? apiAxios : axios;
                     const res = await client.get(route.path, {
                         validateStatus: () => true,
                     });

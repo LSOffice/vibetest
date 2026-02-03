@@ -28,7 +28,7 @@ exports.raceConditionCheck = {
             // This is hard blindly. We'll send empty object or what we can guess.
             // Ideally checking IDOR or Mass Assignment first gives us a shape?
             // For now, empty JSON.
-            const client = route.path.startsWith('/api') ? apiAxios : axios;
+            const client = route.path.startsWith("/api") ? apiAxios : axios;
             for (let i = 0; i < REQUEST_COUNT; i++) {
                 promises.push(client.request({
                     method: route.method,

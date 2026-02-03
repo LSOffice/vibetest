@@ -45,14 +45,14 @@ exports.clientSideSecretsCheck = {
         }
         // Filter out third-party/library code
         const THIRD_PARTY_PATTERNS = [
-            'node_modules',
-            'vendor',
-            'libraries',
-            'lib/',
-            'libs/',
-            '.min.js' // Typically third-party minified libraries
+            "node_modules",
+            "vendor",
+            "libraries",
+            "lib/",
+            "libs/",
+            ".min.js", // Typically third-party minified libraries
         ];
-        const appJsFiles = Array.from(jsFiles).filter(path => !THIRD_PARTY_PATTERNS.some(pattern => path.includes(pattern)));
+        const appJsFiles = Array.from(jsFiles).filter((path) => !THIRD_PARTY_PATTERNS.some((pattern) => path.includes(pattern)));
         // 3. Analyze JS content for secrets
         const SECRET_PATTERNS = [
             {
