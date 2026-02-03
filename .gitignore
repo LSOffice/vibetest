@@ -1,1 +1,4 @@
 node_modules/
+dist/
+.vibetest.json
+log/

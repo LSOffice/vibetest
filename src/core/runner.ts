@@ -5,6 +5,12 @@ import { VibeConfig, Route, Finding } from "./types.js";
 import { discoverRoutes } from "./crawler.js";
 import { checks } from "../checks/index.js";
 import inquirer from "inquirer";
+import {
+  discoverAuth,
+  generateConfigExample,
+  captureAuthFromBrowser,
+} from "./auth-discovery.js";
+import { logTestAttempt } from "./logger.js";
 
 export async function runVibeTest(config: VibeConfig) {
   const spinner = ora("Connecting to target...").start();
@@ -15,32 +21,127 @@ export async function runVibeTest(config: VibeConfig) {
     spinner.succeed(`Connected to ${config.baseUrl}`);
   } catch (e: any) {
     spinner.fail(`Could not connect to ${config.baseUrl}: ${e.message}`);
+    await logTestAttempt({
+      status: "connectivity_failed",
+      error: e?.message,
+      config: {
+        baseUrl: config.baseUrl,
+        apiUrl: config.apiUrl,
+      },
+      timestamp: new Date().toISOString(),
+    });
     return;
   }
 
-  // Interactive Login Check
-  if (!config.auth?.token && process.stdout.isTTY) {
+  // Automatic auth discovery
+  if (!config.auth?.token) {
+    const discoveredAuth = await discoverAuth(config.baseUrl);
+    if (discoveredAuth) {
+      config.auth = {
+        token: discoveredAuth.token,
+        cookies: discoveredAuth.cookies,
+        headers: discoveredAuth.headers,
+      };
+    }
+  }
+
+  // Interactive Login Check (fallback if auto-discovery failed)
+  if (!config.auth?.token && !config.auth?.cookies && process.stdout.isTTY) {
     console.log(""); // spacer
     const { wantAuth } = await inquirer.prompt([
       {
         type: "confirm",
         name: "wantAuth",
-        message: "No auth token provided. Do you want to authenticate now?",
+        message: "No auth credentials found. Do you want to authenticate now?",
         default: false,
       },
     ]);
 
     if (wantAuth) {
-      const { token } = await inquirer.prompt([
+      const { authMethod } = await inquirer.prompt([
         {
-          type: "input",
-          name: "token",
-          message: "Enter Bearer Token (JWT):",
+          type: "list",
+          name: "authMethod",
+          message: "How would you like to authenticate?",
+          choices: [
+            {
+              name: "🌐 Automatic (Open Browser & Login)",
+              value: "browser",
+            },
+            { name: "🔑 Enter Bearer Token (JWT)", value: "token" },
+            {
+              name: "💾 Save config for future (.vibetest.json)",
+              value: "config",
+            },
+            { name: "⏭️  Skip for now", value: "skip" },
+          ],
         },
       ]);
-      if (token) {
-        config.auth = { token };
-        console.log(chalk.green("  ✓ Token configured."));
+
+      if (authMethod === "browser") {
+        const capturedAuth = await captureAuthFromBrowser(config.baseUrl);
+        if (capturedAuth) {
+          config.auth = capturedAuth;
+          console.log(
+            chalk.green("  ✓ Authentication configured from browser."),
+          );
+
+          // Ask if they want to save it
+          const { shouldSave } = await inquirer.prompt([
+            {
+              type: "confirm",
+              name: "shouldSave",
+              message:
+                "Save these credentials to .vibetest.json for future use?",
+              default: true,
+            },
+          ]);
+
+          if (shouldSave) {
+            const fs = await import("fs");
+            fs.writeFileSync(
+              ".vibetest.json",
+              JSON.stringify(capturedAuth, null, 2),
+            );
+            console.log(chalk.green("  ✓ Saved to .vibetest.json"));
+          }
+        } else {
+          console.log(
+            chalk.yellow(
+              "  ⚠ Could not capture authentication. Continuing without auth...",
+            ),
+          );
+        }
+      } else if (authMethod === "token") {
+        const { token } = await inquirer.prompt([
+          {
+            type: "input",
+            name: "token",
+            message: "Enter Bearer Token (JWT):",
+          },
+        ]);
+        if (token) {
+          config.auth = { token };
+          console.log(chalk.green("  ✓ Token configured."));
+        }
+      } else if (authMethod === "config") {
+        console.log(
+          chalk.cyan(
+            "\n  📝 Create a .vibetest.json file in your project root:",
+          ),
+        );
+        console.log(chalk.gray("\n" + generateConfigExample()));
+        console.log(
+          chalk.yellow(
+            "\n  💡 Run vibetest again after creating the config file.\n",
+          ),
+        );
+        await logTestAttempt({
+          status: "config_instructions_shown",
+          config: { baseUrl: config.baseUrl, apiUrl: config.apiUrl },
+          timestamp: new Date().toISOString(),
+        });
+        process.exit(0);
       }
     }
     console.log(""); // spacer
@@ -83,7 +184,8 @@ export async function runVibeTest(config: VibeConfig) {
     ];
 
     let rateLimitHits = 0;
-    const MAX_RATE_LIMIT_HITS = 3;
+    const BASE_WAIT_TIME = 3000; // Start with 3 seconds
+    const MAX_RATE_LIMIT_BEFORE_PROMPT = 5;
 
     // Intercept responses to detect rate limiting
     instance.interceptors.response.use(async (response) => {
@@ -98,20 +200,66 @@ export async function runVibeTest(config: VibeConfig) {
 
       if (isRateLimited) {
         rateLimitHits++;
-        if (rateLimitHits <= MAX_RATE_LIMIT_HITS) {
-          const waitTime = 3000; // 3 seconds
+
+        if (rateLimitHits <= MAX_RATE_LIMIT_BEFORE_PROMPT) {
+          // Exponentially increase wait time: 3s, 6s, 9s, 12s, 15s
+          const waitTime = BASE_WAIT_TIME * rateLimitHits;
           console.log(
             chalk.yellow(
-              `\n  ⏸️  Rate limit detected. Pausing for ${waitTime / 1000}s... (${rateLimitHits}/${MAX_RATE_LIMIT_HITS})`,
+              `\n  ⏸️  Rate limit detected. Pausing for ${waitTime / 1000}s... (${rateLimitHits}/${MAX_RATE_LIMIT_BEFORE_PROMPT})`,
             ),
           );
           await new Promise((resolve) => setTimeout(resolve, waitTime));
-        } else if (rateLimitHits === MAX_RATE_LIMIT_HITS + 1) {
+        }
+
+        if (rateLimitHits === MAX_RATE_LIMIT_BEFORE_PROMPT) {
+          // After 5 rate limits, ask user if they want to continue
           console.log(
-            chalk.yellow(
-              `\n  ⚠️  Multiple rate limits hit. Continuing with caution...`,
+            chalk.red(
+              `\n  🚨 Hit ${MAX_RATE_LIMIT_BEFORE_PROMPT} rate limits. The target application is heavily rate-limiting requests.`,
             ),
           );
+
+          if (process.stdout.isTTY) {
+            const { shouldContinue } = await inquirer.prompt([
+              {
+                type: "confirm",
+                name: "shouldContinue",
+                message:
+                  "Continue testing? (This may take significantly longer)",
+                default: false,
+              },
+            ]);
+
+            if (!shouldContinue) {
+              console.log(chalk.yellow("\n  ⏹️  Testing aborted by user.\n"));
+              await logTestAttempt({
+                status: "aborted_by_user_rate_limit",
+                config: { baseUrl: config.baseUrl, apiUrl: config.apiUrl },
+                discoveredRoutesCount: routes.length,
+                timestamp: new Date().toISOString(),
+              });
+              process.exit(0);
+            } else {
+              console.log(
+                chalk.green("\n  ▶️  Continuing with increased delays...\n"),
+              );
+            }
+          } else {
+            // Non-interactive mode, continue but with longer delays
+            console.log(
+              chalk.yellow("\n  ⚠️  Continuing with increased delays...\n"),
+            );
+          }
+        } else if (rateLimitHits > MAX_RATE_LIMIT_BEFORE_PROMPT) {
+          // After user confirms, use even longer waits
+          const waitTime = BASE_WAIT_TIME * 5; // 15 seconds
+          console.log(
+            chalk.yellow(
+              `\n  ⏸️  Rate limit detected. Pausing for ${waitTime / 1000}s... (hit #${rateLimitHits})`,
+            ),
+          );
+          await new Promise((resolve) => setTimeout(resolve, waitTime));
         }
       }
       return response;
@@ -154,6 +302,19 @@ export async function runVibeTest(config: VibeConfig) {
 
   // 4. Report
   printReport(findings);
+  await logTestAttempt({
+    status: "completed",
+    config: {
+      baseUrl: config.baseUrl,
+      apiUrl: config.apiUrl,
+      // avoid writing large or non-serializable items
+      auth: config.auth,
+      options: (config as any).options || null,
+    },
+    discoveredRoutesCount: routes.length,
+    findings,
+    timestamp: new Date().toISOString(),
+  });
 }
 
 function printReport(findings: Finding[]) {

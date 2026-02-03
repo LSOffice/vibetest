@@ -39,7 +39,7 @@ exports.frontendFormsCheck = {
     id: "frontend-forms",
     name: "Frontend Forms & Input Security",
     description: "Analyzes HTML forms for missing CSRF tokens, autocomplete on passwords, and exposed data",
-    async run({ axios, discoveredRoutes }) {
+    async run({ axios, apiAxios, discoveredRoutes }) {
         const findings = [];
         // Target HTML pages (non-API routes)
         const htmlPages = discoveredRoutes.filter((r) => r.method === "GET" &&
@@ -130,26 +130,162 @@ exports.frontendFormsCheck = {
                         });
                     }
                 });
-                // 4. Check for client-side validation only (no server-side backup)
-                const hasClientValidation = $("input[required], input[pattern], input[min], input[max]").length >
-                    0;
-                const forms = $("form");
-                if (hasClientValidation && forms.length > 0) {
-                    // This is a heuristic - we can't know if server validates without testing
-                    // But we can flag it as a reminder
-                    findings.push({
-                        id: `client-validation-${route.path}`,
-                        checkId: "frontend-forms",
-                        category: "frontend",
-                        name: "Client-Side Validation Detected (Verify Server-Side)",
-                        endpoint: route.path,
-                        risk: "low",
-                        description: `HTML5 validation attributes (required, pattern, etc.) are present. Ensure server-side validation exists too.`,
-                        assumption: "Client-side validation is sufficient.",
-                        reproduction: `Disable JavaScript and submit forms on ${route.path}`,
-                        fix: "Always validate on the server. Client validation is UX, not security.",
-                    });
-                }
+                // 4. Check for client-side validation and test server-side enforcement
+                const validationTests = [];
+                $("form").each((_, form) => {
+                    const $form = $(form);
+                    let action = $form.attr("action");
+                    const method = ($form.attr("method") || "POST").toUpperCase();
+                    // Check if form has onSubmit handler (Next.js, React forms often use JS handlers)
+                    const hasOnSubmit = $form.attr("onsubmit") !== undefined;
+                    // If no action and no onSubmit, this is likely a JS-handled form
+                    if (!action) {
+                        // Try to infer from the page context
+                        // Login/Register pages typically submit to /api/auth/login or /api/auth/register
+                        const pathLower = route.path.toLowerCase();
+                        if (pathLower.includes("/login")) {
+                            action = "/api/auth/login";
+                        }
+                        else if (pathLower.includes("/register") ||
+                            pathLower.includes("/signup")) {
+                            action = "/api/auth/register";
+                        }
+                        else if (pathLower.includes("/profile")) {
+                            action = "/api/user/profile";
+                        }
+                        else if (pathLower.includes("/settings")) {
+                            action = "/api/user/settings";
+                        }
+                        else {
+                            action = route.path; // fallback to same path
+                        }
+                    } // Default to POST if not specified
+                    // Find inputs with validation attributes
+                    const validatedInputs = $form.find("input[required], input[pattern], input[min], input[max], input[minlength], input[maxlength], input[type='email'], input[type='url']");
+                    if (validatedInputs.length > 0) {
+                        // Build invalid payload to test server-side validation
+                        const invalidPayload = {};
+                        let hasTestableValidation = false;
+                        validatedInputs.each((_, input) => {
+                            const $input = $(input);
+                            const name = $input.attr("name");
+                            const type = $input.attr("type") || "text";
+                            const required = $input.attr("required") !== undefined;
+                            const pattern = $input.attr("pattern");
+                            const minLength = $input.attr("minlength");
+                            const maxLength = $input.attr("maxlength");
+                            if (!name)
+                                return;
+                            // Generate invalid data based on validation rules
+                            if (type === "email") {
+                                invalidPayload[name] = "not-an-email";
+                                hasTestableValidation = true;
+                            }
+                            else if (type === "url") {
+                                invalidPayload[name] = "not-a-url";
+                                hasTestableValidation = true;
+                            }
+                            else if (pattern) {
+                                // Try to violate the pattern (basic heuristic)
+                                invalidPayload[name] = "!!!INVALID!!!";
+                                hasTestableValidation = true;
+                            }
+                            else if (minLength) {
+                                // Send a string shorter than minlength
+                                invalidPayload[name] = "x";
+                                hasTestableValidation = true;
+                            }
+                            else if (maxLength) {
+                                // Send a string longer than maxlength
+                                const len = parseInt(maxLength) || 100;
+                                invalidPayload[name] = "x".repeat(len + 10);
+                                hasTestableValidation = true;
+                            }
+                            else if (required) {
+                                // For required fields without specific validation, try empty string
+                                if (!invalidPayload[name]) {
+                                    invalidPayload[name] = "";
+                                    hasTestableValidation = true;
+                                }
+                            }
+                        });
+                        // Skip GET method forms (search forms, etc.)
+                        if (method === "GET") {
+                            if (hasTestableValidation) {
+                                findings.push({
+                                    id: `client-validation-get-${route.path}`,
+                                    checkId: "frontend-forms",
+                                    category: "frontend",
+                                    name: "Client-Side Validation on GET Form",
+                                    endpoint: route.path,
+                                    risk: "low",
+                                    description: `HTML5 validation on a GET form. GET forms typically shouldn't have strict validation.`,
+                                    assumption: "GET forms don't need validation.",
+                                    reproduction: `Inspect form on ${route.path}`,
+                                    fix: "Use POST for forms that need validation.",
+                                });
+                            }
+                            return; // Skip testing
+                        }
+                        if (hasTestableValidation &&
+                            Object.keys(invalidPayload).length > 0) {
+                            // Test the backend asynchronously
+                            const testPromise = (async () => {
+                                try {
+                                    const client = action.startsWith("/api") ? apiAxios : axios;
+                                    const res = await client.request({
+                                        method,
+                                        url: action,
+                                        data: invalidPayload,
+                                        validateStatus: () => true,
+                                    });
+                                    // If server accepts invalid data (200/201/204), validation is missing
+                                    if (res.status >= 200 && res.status < 300) {
+                                        findings.push({
+                                            id: `missing-server-validation-${route.path}-${action}`,
+                                            checkId: "frontend-forms",
+                                            category: "backend",
+                                            name: "Missing Server-Side Validation",
+                                            endpoint: `${route.path} -> ${method} ${action}`,
+                                            risk: "high",
+                                            description: `Form on ${route.path} has client-side validation (email, pattern, required, etc.), but the server at ${action} accepted invalid data without rejecting it. Payload: ${JSON.stringify(invalidPayload).substring(0, 100)}...`,
+                                            assumption: "Client-side validation is enough; users can't bypass it.",
+                                            reproduction: `Send invalid data directly to ${method} ${action} bypassing the browser form validation.`,
+                                            fix: "Implement server-side validation matching all frontend rules. Never trust client input.",
+                                        });
+                                    }
+                                    else if (res.status === 400 || res.status === 422) {
+                                        // Good! Server rejected invalid data
+                                        // No finding needed
+                                    }
+                                }
+                                catch (e) {
+                                    // Network error or other issue, skip
+                                }
+                            })();
+                            validationTests.push(testPromise);
+                        }
+                        else {
+                            // Forms exist but can't test automatically (no name attributes, no testable validation patterns, etc.)
+                            if (validatedInputs.length > 0) {
+                                findings.push({
+                                    id: `client-validation-untestable-${route.path}`,
+                                    checkId: "frontend-forms",
+                                    category: "frontend",
+                                    name: "Client-Side Validation Detected (Inputs Missing Names)",
+                                    endpoint: route.path,
+                                    risk: "low",
+                                    description: `HTML5 validation attributes are present but inputs lack 'name' attributes or testable patterns. Found ${validatedInputs.length} validated input(s). Cannot automatically test server-side validation.`,
+                                    assumption: "Client-side validation is sufficient.",
+                                    reproduction: `Inspect form inputs on ${route.path} - ensure they have proper 'name' attributes for backend processing.`,
+                                    fix: "Add 'name' attributes to all form inputs and implement server-side validation.",
+                                });
+                            }
+                        }
+                    }
+                });
+                // Wait for all validation tests to complete
+                await Promise.all(validationTests);
                 // 5. Check for forms with GET method for sensitive operations
                 $('form[method="GET"], form[method="get"]').each((_, form) => {
                     const $form = $(form);

@@ -7,6 +7,8 @@ export interface VibeConfig {
     username?: string;
     password?: string;
     token?: string;
+    cookies?: Record<string, string>;
+    headers?: Record<string, string>;
   };
   safeMode: boolean; // No destructive tests
 }

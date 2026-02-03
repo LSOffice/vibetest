@@ -1,0 +1,9 @@
+{
+  "token": "paste-your-jwt-token-here",
+  "cookies": {
+    "session": "your-session-cookie-value"
+  },
+  "headers": {
+    "X-Custom-Header": "optional-custom-header"
+  }
+}

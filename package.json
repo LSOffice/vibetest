@@ -10,7 +10,7 @@
   "scripts": {
     "build": "tsc",
     "postbuild": "chmod +x dist/index.js",
-    "start": "npm run build && npm link && echo '\n✅ vibetest command installed globally!\n\n📝 Usage: vibetest -p <port> [options]\n\n💡 Examples:\n   vibetest -p 3000\n   vibetest -p 3000 --api-port 8080\n   vibetest --help\n'",
+    "start": "npm run build && npm link && node ./scripts/print-welcome.js",
     "dev": "ts-node src/index.ts",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -34,6 +34,7 @@
     "fake-useragent": "^1.0.1",
     "inquirer": "^8.2.7",
     "ora": "^5.4.1",
+    "puppeteer": "^24.36.1",
     "zod": "^4.3.6"
   },
   "devDependencies": {
