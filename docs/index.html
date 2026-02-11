@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>vibetest · Localhost pentesting CLI</title>
+    <link rel="stylesheet" href="./styles.css" />
+</head>
+
+<body>
+    <header class="nav">
+        <div class="container nav-inner">
+            <a class="brand" href="/">vibetest</a>
+            <nav class="links">
+                <a href="./usage.html">Usage</a>
+                <a href="./auth.html">Authentication</a>
+                <a href="https://github.com/LSOffice/vibetest" target="_blank" rel="noopener">GitHub</a>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        <section class="hero">
+            <div class="container">
+                <h1>vibetest</h1>
+                <p class="subtitle">Localhost-first pentesting CLI for catching vibe-coded vulnerabilities</p>
+                <p class="lead">Fast, developer-friendly security scans for apps you build quickly (AI-assisted or
+                    hand-coded). Discover auth issues, misconfigurations, exposed endpoints, and more — all locally.</p>
+                <a class="btn" href="./usage.html">Get Started</a>
+            </div>
+        </section>
+
+        <section class="container features">
+            <h2>Why use vibetest?</h2>
+            <div class="grid">
+                <div class="card">
+                    <h3>Developer-focused</h3>
+                    <p>Runs on localhost and matches typical fast development workflows — minimal setup, quick results.
+                    </p>
+                </div>
+                <div class="card">
+                    <h3>Auth-aware</h3>
+                    <p>Automatically discovers tokens, cookies, and headers so you can scan authenticated routes without
+                        hassle.</p>
+                </div>
+                <div class="card">
+                    <h3>Actionable findings</h3>
+                    <p>Reports include clear reproduction steps and recommended fixes so developers can resolve issues
+                        quickly.</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="container quickstart">
+            <h2>Quick Start</h2>
+            <pre><code># Install / run from repo
+npm start
+# Scan a local app on port 3000
+vibetest -p 3000
+# With a separate API backend
+vibetest -p 3000 --api-port 8080
+				</code></pre>
+            <p class="muted">See the full usage guide for flags and authentication options.</p>
+        </section>
+
+        <section class="container cta">
+            <h2>Ready to scan?</h2>
+            <p>Run vibetest against your local app and review the generated report in <code>vibetest-reports/</code>.
+            </p>
+            <a class="btn" href="./usage.html">Run Your First Scan</a>
+        </section>
+    </main>
+
+    <footer class="site-footer">
+        <div class="container">
+            <small>vibetest — Localhost pentesting tooling · <a href="https://github.com/LSOffice/vibetest"
+                    target="_blank" rel="noopener">GitHub</a></small>
+        </div>
+    </footer>
+</body>
+
+</html>

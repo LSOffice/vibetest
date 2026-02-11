@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>vibetest · Usage</title>
+    <link rel="stylesheet" href="./styles.css" />
+</head>
+
+<body>
+    <header class="nav">
+        <div class="container nav-inner">
+            <a class="brand" href="./index.html">vibetest</a>
+            <nav class="links">
+                <a href="./usage.html">Usage</a>
+                <a href="./auth.html">Authentication</a>
+            </nav>
+        </div>
+    </header>
+
+    <main class="container">
+        <h1>Usage</h1>
+        <p class="muted">Run vibetest locally to scan your app quickly and safely.</p>
+
+        <h2>Basic command</h2>
+        <pre><code>vibetest -p 3000</code></pre>
+
+        <h2>Common flags</h2>
+        <ul>
+            <li><strong>-p</strong>: Frontend port to scan (required)</li>
+            <li><strong>--api-port</strong>: Separate API backend port</li>
+            <li><strong>--host</strong>: Host to bind (default: 127.0.0.1)</li>
+        </ul>
+
+        <h2>Authentication</h2>
+        <p>vibetest supports automatic credential discovery (recommended) plus environment variables and config file
+            options. See the <a href="./auth.html">Authentication guide</a> for details.</p>
+
+        <h2>Output</h2>
+        <p>Reports are stored in <code>vibetest-reports/</code> with timestamps and a summary. Open the latest report to
+            review discovered issues and reproduction steps.</p>
+
+        <h2>Troubleshooting</h2>
+        <ul>
+            <li>Ensure your app is running and accessible on the specified port.</li>
+            <li>If scanning authenticated endpoints, set up credentials first (see Authentication).</li>
+            <li>Use a test account with limited permissions when possible.</li>
+        </ul>
+
+        <p class="muted">For full examples and advanced options, check the repository README or open an issue on GitHub.
+        </p>
+    </main>
+
+    <footer class="site-footer">
+        <div class="container"><small><a href="./index.html">Back</a></small></div>
+    </footer>
+</body>
+
+</html>

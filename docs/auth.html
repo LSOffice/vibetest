@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>vibetest · Authentication</title>
+    <link rel="stylesheet" href="./styles.css" />
+</head>
+
+<body>
+    <header class="nav">
+        <div class="container nav-inner">
+            <a class="brand" href="./index.html">vibetest</a>
+            <nav class="links">
+                <a href="./usage.html">Usage</a>
+                <a href="./auth.html">Authentication</a>
+            </nav>
+        </div>
+    </header>
+
+    <main class="container">
+        <h1>Authentication</h1>
+        <p class="muted">vibetest auto-discovers credentials in several convenient ways.</p>
+
+        <h2>Priority order</h2>
+        <ol>
+            <li><strong>.vibetest.json</strong> — recommended. Stores tokens, cookies, headers.</li>
+            <li><strong>Environment variables</strong> — VIBETEST_TOKEN, JWT_TOKEN, or AUTH_TOKEN.</li>
+            <li><strong>Automatic browser capture</strong> — open browser, log in, and vibetest captures tokens/cookies.
+            </li>
+            <li><strong>Manual entry</strong> — supply a bearer token when prompted.</li>
+        </ol>
+
+        <h2>Config file example</h2>
+        <pre><code>{
+  "token": "your-jwt-token-here",
+  "cookies": { "session": "..." },
+  "headers": { "X-API-Key": "..." }
+}
+      </code></pre>
+
+        <h2>Automatic capture</h2>
+        <p>When you choose automatic capture, vibetest opens a browser and monitors network traffic to locate
+            Authorization headers, JWTs in responses, cookies, and tokens in localStorage. You can opt to save captured
+            credentials to <code>.vibetest.json</code>.</p>
+
+        <h2>Security tips</h2>
+        <ul>
+            <li>Add <code>.vibetest.json</code> to <code>.gitignore</code>.</li>
+            <li>Use short-lived test tokens and rotate regularly.</li>
+            <li>Prefer environment variables for CI usage.</li>
+        </ul>
+
+        <p class="muted">See <a href="../AUTH.md">AUTH.md</a> for the full details and examples.</p>
+    </main>
+
+    <footer class="site-footer">
+        <div class="container"><small><a href="./index.html">Back</a></small></div>
+    </footer>
+</body>
+
+</html>
