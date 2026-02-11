@@ -1,4 +1,6 @@
 node_modules/
 .vibetest.json
+.vibetest-cache.json
 log/
 dist/
+vibetest-reports/

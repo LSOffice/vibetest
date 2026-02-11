@@ -149,8 +149,24 @@ export async function runVibeTest(config: VibeConfig) {
 
   // 2. Discovery
   spinner.start("Mapping application topology...");
+  const { getCacheStats } = await import("./route-cache.js");
+  const statsBefore = getCacheStats(config.baseUrl);
   const routes = await discoverRoutes(config.baseUrl);
+  const statsAfter = getCacheStats(config.baseUrl);
+
+  const newlySearched = statsAfter.totalCached - statsBefore.totalCached;
+  const fromCache = statsBefore.existingPaths;
+
   spinner.succeed(`Discovered ${routes.length} potential endpoints`);
+
+  if (newlySearched > 0 || fromCache > 0) {
+    if (fromCache > 0) {
+      console.log(chalk.gray(`  📦 Loaded ${fromCache} paths from cache`));
+    }
+    if (newlySearched > 0) {
+      console.log(chalk.gray(`  🔍 Searched ${newlySearched} new paths`));
+    }
+  }
 
   if (routes.length === 0) {
     console.log(chalk.yellow("  No routes found. Is the app running?"));

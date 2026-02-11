@@ -22,6 +22,11 @@ program
     "Auto-continue testing on rate limits without prompting",
     false,
   )
+  .option(
+    "--clear-cache",
+    "Clear the route cache before running",
+    false,
+  )
   .action(async (options) => {
     console.log(chalk.bold.magenta("\n🔮 Vibetest initialized...\n"));
 
@@ -31,6 +36,14 @@ program
           "⚠️  Warning: Testing non-localhost targets is discouraged used Vibetest.",
         ),
       );
+    }
+
+    // Handle cache clearing
+    if (options.clearCache) {
+      const { clearCache } = await import("./core/route-cache.js");
+      const frontendUrl = `http://${options.host}:${options.port}`;
+      clearCache(frontendUrl);
+      console.log(chalk.green("✓ Route cache cleared\n"));
     }
 
     try {
